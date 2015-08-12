@@ -1,6 +1,9 @@
 package io.atomicbits.scraml.sbtplugin
 
+import java.util.Date
+
 import io.atomicbits.scraml.generator.ScramlGenerator
+import org.joda.time.DateTime
 import sbt._
 import Keys._
 
@@ -30,9 +33,10 @@ object ScramlSbtPlugin extends AutoPlugin {
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
         def generate(ramlPointer: String, apiPackageName: String, apiClassName: String, dst: File): Seq[File] = {
-          if (ramlPointer.nonEmpty && apiPackageName.nonEmpty && apiClassName.nonEmpty) {
-            // RAML files are expected to be found in the resource directory
-            val ramlSource = new File(resourceDirectory.value, ramlPointer)
+          // RAML files are expected to be found in the resource directory
+          val ramlBaseDir = resourceDirectory.value
+          if (ramlPointer.nonEmpty && apiPackageName.nonEmpty && apiClassName.nonEmpty && changed(ramlBaseDir)) {
+            val ramlSource = new File(ramlBaseDir, ramlPointer)
             val generatedFiles: Seq[(File, String)] =
               ScramlGenerator.generate(s"file://${ramlSource.getCanonicalPath}", apiPackageName, apiClassName)
             dst.mkdirs()
@@ -46,7 +50,6 @@ object ScramlSbtPlugin extends AutoPlugin {
               }
             files
           } else {
-            println(s"RAML pointer, the api package name or the api class name is empty")
             Seq.empty[File]
           }
         }
@@ -78,5 +81,38 @@ object ScramlSbtPlugin extends AutoPlugin {
   override val projectSettings =
     inConfig(Compile)(baseScramlSettings)
   // ++ inConfig(Test)(baseScramlSettings)
+
+  var lastModifiedTime: Long = 0L
+
+  private def changed(dir: File): Boolean = {
+
+    def lastChangedTime(filesAndDirectories: List[File]): Option[Long] = {
+
+      val (files, directories) = filesAndDirectories.partition(_.isFile)
+
+      val maxFilesModifiedTime =
+        if (files.nonEmpty) Some(files.map(_.lastModified()).max)
+        else None
+
+      val optLastModifiedTimes = maxFilesModifiedTime :: directories.map(dir => lastChangedTime(dir.listFiles().toList))
+      val lastModifiedTimes = optLastModifiedTimes.flatten
+
+      if (lastModifiedTimes.nonEmpty) Some(lastModifiedTimes.max)
+      else None
+    }
+
+    val topLevelFiles =
+      if (dir.exists()) dir.listFiles().toList
+      else List()
+
+    val changedTime = lastChangedTime(topLevelFiles)
+
+    changedTime.exists { changedT =>
+      val changed = changedT > lastModifiedTime
+      if (changed) lastModifiedTime = changedT
+      changed
+    }
+
+  }
 
 }
