@@ -10,11 +10,11 @@ sbtPlugin := true
 
 scalacOptions := Seq("-deprecation", "-encoding", "utf8")
 
-CrossBuilding.crossSbtVersions := Seq("0.11.5", "0.12", "0.13")
+// Sonatype snapshot resolver is needed to fetch rxhttpclient-scala_2.11:0.2.0-SNAPSHOT.
+resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test" withSources() withJavadoc(),
-  "org.scalacheck" %% "scalacheck" % "1.12.1" % "test" withSources() withJavadoc()
+  "io.atomicbits" %% "scraml-generator" % "0.2.0-SNAPSHOT" withSources() withJavadoc()
 )
 
 
