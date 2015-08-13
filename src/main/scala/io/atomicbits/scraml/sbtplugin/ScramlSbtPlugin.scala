@@ -18,6 +18,8 @@ object ScramlSbtPlugin extends AutoPlugin {
     )
   )
 
+  var lastGeneratedFiles: Seq[File] = Seq()
+
   // by defining autoImport, the settings are automatically imported into user's `*.sbt`
   object autoImport {
 
@@ -35,20 +37,25 @@ object ScramlSbtPlugin extends AutoPlugin {
         def generate(ramlPointer: String, apiPackageName: String, apiClassName: String, dst: File): Seq[File] = {
           // RAML files are expected to be found in the resource directory
           val ramlBaseDir = resourceDirectory.value
-          if (ramlPointer.nonEmpty && apiPackageName.nonEmpty && apiClassName.nonEmpty && changed(ramlBaseDir)) {
-            val ramlSource = new File(ramlBaseDir, ramlPointer)
-            val generatedFiles: Seq[(File, String)] =
-              ScramlGenerator.generate(s"file://${ramlSource.getCanonicalPath}", apiPackageName, apiClassName)
-            dst.mkdirs()
-            val files: Seq[File] =
-              generatedFiles.map { fileWithContent =>
-                val (file, content) = fileWithContent
-                val fileInDst = new File(dst, file.getCanonicalPath)
-                fileInDst.getParentFile.mkdirs()
-                IO.write(fileInDst, content)
-                fileInDst
-              }
-            files
+          if (ramlPointer.nonEmpty && apiPackageName.nonEmpty && apiClassName.nonEmpty) {
+            if(needsRegeneration(ramlBaseDir, dst)) {
+              val ramlSource = new File(ramlBaseDir, ramlPointer)
+              val generatedFiles: Seq[(File, String)] =
+                ScramlGenerator.generate(s"file://${ramlSource.getCanonicalPath}", apiPackageName, apiClassName)
+              dst.mkdirs()
+              val files: Seq[File] =
+                generatedFiles.map { fileWithContent =>
+                  val (file, content) = fileWithContent
+                  val fileInDst = new File(dst, file.getCanonicalPath)
+                  fileInDst.getParentFile.mkdirs()
+                  IO.write(fileInDst, content)
+                  fileInDst
+                }
+              lastGeneratedFiles = files
+              files
+            } else {
+              lastGeneratedFiles
+            }
           } else {
             Seq.empty[File]
           }
@@ -84,7 +91,7 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   var lastModifiedTime: Long = 0L
 
-  private def changed(dir: File): Boolean = {
+  private def needsRegeneration(dir: File, destination: File): Boolean = {
 
     def lastChangedTime(filesAndDirectories: List[File]): Option[Long] = {
 
@@ -105,12 +112,15 @@ object ScramlSbtPlugin extends AutoPlugin {
       if (dir.exists()) dir.listFiles().toList
       else List()
 
+    val destinationEmpty = !destination.exists() || destination.listFiles().toList.isEmpty
+
     val changedTime = lastChangedTime(topLevelFiles)
 
     changedTime.exists { changedT =>
       val changed = changedT > lastModifiedTime
       if (changed) lastModifiedTime = changedT
-      changed
+      // If we have resource files and the destination dir is empty, we regenerate anyhow to avoid starvation after a clean operation.
+      changed || destinationEmpty
     }
 
   }
