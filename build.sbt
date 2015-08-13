@@ -10,11 +10,11 @@ sbtPlugin := true
 
 scalacOptions := Seq("-deprecation", "-encoding", "utf8")
 
-// Sonatype snapshot resolver is needed to fetch rxhttpclient-scala_2.11:0.2.0-SNAPSHOT.
-resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+// Sonatype snapshot resolver is needed to fetch rxhttpclient-scala_2.11:0.2.0-SNAPSHOT and scraml-generator SNAPSHOT
+ resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 libraryDependencies ++= Seq(
-  "io.atomicbits" %% "scraml-generator" % "0.2.0-SNAPSHOT" withSources() withJavadoc()
+  "io.atomicbits" %% "scraml-generator" % "0.2.1-SNAPSHOT" withSources() withJavadoc()
 )
 
 
