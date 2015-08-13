@@ -32,7 +32,7 @@ publishTo := {
     Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 
-pomExtra :=  <url>https://github.com/atomicbits/scraml</url>
+pomExtra :=  <url>https://github.com/atomicbits/scraml-sbt-plugin</url>
   <licenses>
     <license>
       <name>AGPL licencse</name>
@@ -41,8 +41,8 @@ pomExtra :=  <url>https://github.com/atomicbits/scraml</url>
     </license>
   </licenses>
   <scm>
-    <url>git@github.com:atomicbits/scraml.git</url>
-    <connection>scm:git:git@github.com:atomicbits/scraml.git</connection>
+    <url>git@github.com:atomicbits/scraml-sbt-plugin.git</url>
+    <connection>scm:git:git@github.com:atomicbits/scraml-sbt-plugin.git</connection>
   </scm>
   <developers>
     <developer>
