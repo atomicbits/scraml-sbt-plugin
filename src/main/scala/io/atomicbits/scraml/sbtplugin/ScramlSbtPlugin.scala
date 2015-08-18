@@ -32,9 +32,12 @@ object ScramlSbtPlugin extends AutoPlugin {
         def generate(ramlPointer: String, dst: File): Seq[File] = {
           // RAML files are expected to be found in the resource directory
           val ramlBaseDir = resourceDirectory.value
+          println(s"RAML base dir is: $ramlBaseDir")
           if (ramlPointer.nonEmpty) {
             if (needsRegeneration(ramlBaseDir, dst)) {
+              println(s"RAML relative dir is: $ramlPointer")
               val ramlSource = new File(ramlBaseDir, ramlPointer)
+              println(s"RAML absolute dir is: ${ramlSource.getCanonicalPath}")
               val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer)
               val generatedFiles: Seq[(File, String)] =
                 ScramlGenerator.generate(s"file://${ramlSource.getCanonicalPath}", apiPackageName, apiClassName)
