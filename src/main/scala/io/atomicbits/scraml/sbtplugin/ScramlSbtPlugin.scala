@@ -4,6 +4,8 @@ import io.atomicbits.scraml.generator.ScramlGenerator
 import sbt._
 import Keys._
 
+import scala.util.{Failure, Success, Try}
+
 /**
  * Created by peter on 31/07/15. 
  */
@@ -40,7 +42,10 @@ object ScramlSbtPlugin extends AutoPlugin {
               println(s"RAML absolute dir is: ${ramlSource.getCanonicalPath}")
               val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer)
               val generatedFiles: Seq[(File, String)] =
-                ScramlGenerator.generate(s"file://${ramlSource.getCanonicalPath}", apiPackageName, apiClassName)
+                feedbackOnException(
+                  Try(ScramlGenerator.generate(ramlSource.toURI.toURL.toString, apiPackageName, apiClassName)),
+                  ramlBaseDir, ramlPointer, ramlSource
+                )
               dst.mkdirs()
               val files: Seq[File] =
                 generatedFiles.map { fileWithContent =>
@@ -149,6 +154,36 @@ object ScramlSbtPlugin extends AutoPlugin {
       changed || destinationEmpty
     }
 
+  }
+
+  private def feedbackOnException(result: Try[Seq[(File, String)]],
+                                  ramlBaseDir: File,
+                                  ramlPointer: String,
+                                  ramlSource: File): Seq[(File, String)] = {
+    result match {
+      case Success(res)                      => res
+      case Failure(ex: NullPointerException) =>
+        val ramlBase = if (ramlBaseDir != null) ramlBaseDir.getCanonicalPath else "null"
+        val ramlSrc = if (ramlSource != null) ramlSource.toURI.toURL.toString else "null"
+        println(
+          s"""
+             |Exception during RAMl parsing, possibly caused by a wrong RAML path.
+             |Are you sure the following values are correct (non-null)?
+             |
+             |- - - - - - - - - - - - - - - - - - - - - - -
+             |RAML base path: $ramlBase
+              |RAML relative path: $ramlPointer
+              |RAML absolute path: $ramlSrc
+              |- - - - - - - - - - - - - - - - - - - - - - -
+              |
+              |In case the relative path is wrong or null, check your project settings and
+              |make sure the 'scramlRamlApi in scraml in Compile' value points to the main
+              |raml file in your project's (or module's) resources directory.
+              |
+           """.stripMargin)
+        throw ex
+      case Failure(ex)                       => throw ex
+    }
   }
 
 }
