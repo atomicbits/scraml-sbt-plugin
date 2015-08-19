@@ -39,7 +39,7 @@ object ScramlSbtPlugin extends AutoPlugin {
             if (needsRegeneration(ramlBaseDir, dst)) {
               println(s"RAML relative dir is: $ramlPointer")
               val ramlSource = new File(ramlBaseDir, ramlPointer)
-              println(s"RAML absolute dir is: ${ramlSource.getCanonicalPath}")
+              println(s"RAML absolute dir is: ${ramlSource.toURI.toURL.toString}")
               val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer)
               val generatedFiles: Seq[(File, String)] =
                 feedbackOnException(
@@ -50,7 +50,7 @@ object ScramlSbtPlugin extends AutoPlugin {
               val files: Seq[File] =
                 generatedFiles.map { fileWithContent =>
                   val (file, content) = fileWithContent
-                  val fileInDst = new File(dst, file.getCanonicalPath)
+                  val fileInDst = new File(dst, file.getPath)
                   fileInDst.getParentFile.mkdirs()
                   IO.write(fileInDst, content)
                   fileInDst
