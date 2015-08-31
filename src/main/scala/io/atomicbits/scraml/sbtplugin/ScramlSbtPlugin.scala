@@ -6,6 +6,9 @@ import Keys._
 
 import scala.util.{Failure, Success, Try}
 
+import scala.collection.JavaConversions.mapAsScalaMap
+
+
 /**
  * Created by peter on 31/07/15. 
  */
@@ -41,20 +44,20 @@ object ScramlSbtPlugin extends AutoPlugin {
               val ramlSource = new File(ramlBaseDir, ramlPointer)
               println(s"RAML absolute dir is: ${ramlSource.toURI.toURL.toString}")
               val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer)
-              val generatedFiles: Seq[(File, String)] =
+              val generatedFiles: Map[String, String] =
                 feedbackOnException(
-                  Try(ScramlGenerator.generate(ramlSource.toURI.toURL.toString, apiPackageName, apiClassName)),
+                  Try(mapAsScalaMap(ScramlGenerator.generate(ramlSource.toURI.toURL.toString, apiPackageName, apiClassName)).toMap),
                   ramlBaseDir, ramlPointer, ramlSource
                 )
               dst.mkdirs()
               val files: Seq[File] =
-                generatedFiles.map { fileWithContent =>
-                  val (file, content) = fileWithContent
-                  val fileInDst = new File(dst, file.getPath)
+                generatedFiles.map { filePathsWithContent =>
+                  val (filePath, content) = filePathsWithContent
+                  val fileInDst = new File(dst, filePath)
                   fileInDst.getParentFile.mkdirs()
                   IO.write(fileInDst, content)
                   fileInDst
-                }
+                }.toSeq
               lastGeneratedFiles = files
               files
             } else {
@@ -156,10 +159,10 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   }
 
-  private def feedbackOnException(result: Try[Seq[(File, String)]],
+  private def feedbackOnException(result: Try[Map[String, String]],
                                   ramlBaseDir: File,
                                   ramlPointer: String,
-                                  ramlSource: File): Seq[(File, String)] = {
+                                  ramlSource: File): Map[String, String] = {
     result match {
       case Success(res)                      => res
       case Failure(ex: NullPointerException) =>
