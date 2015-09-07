@@ -5,7 +5,7 @@ To enable scraml generation in your project, follow these steps:
 
 Add the following to the plugins.sbt of your Scala project.
 
-    addSbtPlugin("io.atomicbits"      % "scraml-sbt-plugin"   % "0.3.0-SNAPSHOT")
+    addSbtPlugin("io.atomicbits"      % "scraml-sbt-plugin"   % "0.3.1-SNAPSHOT")
     // We're still on a snapshot release, so the Sonatype snapshot resolver is required
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
     
