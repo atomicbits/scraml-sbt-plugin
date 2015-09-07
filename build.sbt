@@ -2,7 +2,7 @@ name := "scraml-sbt-plugin"
 
 organization := "io.atomicbits"
 
-version := "0.3.1-SNAPSHOT"
+version := "0.3.2-SNAPSHOT"
 
 scalaVersion := "2.10.4"
 
@@ -14,7 +14,7 @@ scalacOptions := Seq("-deprecation", "-encoding", "utf8")
  resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 libraryDependencies ++= Seq(
-  "io.atomicbits" %% "scraml-generator" % "0.3.1-SNAPSHOT" withSources() withJavadoc()
+  "io.atomicbits" %% "scraml-generator" % "0.3.2-SNAPSHOT" withSources() withJavadoc()
 )
 
 
