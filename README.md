@@ -15,3 +15,5 @@ In your buld.sbt file add the location of your raml main entry file relatively t
     scramlRamlApi in scraml in Compile := "io/atomicbits/scraml/TestClient01.raml"
 
 Compile your project. The generated code will appear in your 'target/scala-2.xx/src_managed folder and it should be picked up as included source code in your project. 
+
+See the https://github.com/atomicbits/scraml-test-scala project for an example. 
