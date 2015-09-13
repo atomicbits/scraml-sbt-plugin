@@ -2,7 +2,7 @@ name := "scraml-sbt-plugin"
 
 organization := "io.atomicbits"
 
-version := "0.3.2-SNAPSHOT"
+version := "0.3.3-SNAPSHOT"
 
 scalaVersion := "2.10.4"
 
