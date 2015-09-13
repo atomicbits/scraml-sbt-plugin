@@ -14,7 +14,7 @@ scalacOptions := Seq("-deprecation", "-encoding", "utf8")
  resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 libraryDependencies ++= Seq(
-  "io.atomicbits" %% "scraml-generator" % "0.3.2-SNAPSHOT" withSources() withJavadoc()
+  "io.atomicbits" %% "scraml-generator" % "0.3.3-SNAPSHOT" withSources() withJavadoc()
 )
 
 
