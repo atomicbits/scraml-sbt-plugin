@@ -1,3 +1,22 @@
+/*
+ *
+ *  (C) Copyright 2015 Atomic BITS (http://atomicbits.io).
+ *
+ *  All rights reserved. This program and the accompanying materials
+ *  are made available under the terms of the GNU Affero General Public License
+ *  (AGPL) version 3.0 which accompanies this distribution, and is available in
+ *  the LICENSE file or at http://www.gnu.org/licenses/agpl-3.0.en.html
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *  Affero General Public License for more details.
+ *
+ *  Contributors:
+ *      Peter Rigole
+ *
+ */
+
 package io.atomicbits.scraml.sbtplugin
 
 import io.atomicbits.scraml.generator.ScramlGenerator
@@ -16,7 +35,7 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Setting[_]] = Seq(
     libraryDependencies ++= Seq(
-      "io.atomicbits" %% "scraml-dsl-scala" % "0.3.3-SNAPSHOT" withSources() withJavadoc()
+      "io.atomicbits" %% "scraml-dsl-scala" % "0.3.4-SNAPSHOT" withSources() withJavadoc()
     )
   )
 
@@ -34,21 +53,28 @@ object ScramlSbtPlugin extends AutoPlugin {
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
+
         def generate(ramlPointer: String, dst: File): Seq[File] = {
+
           // RAML files are expected to be found in the resource directory
           val ramlBaseDir = resourceDirectory.value
-          // println(s"RAML base dir is: $ramlBaseDir")
+
           if (ramlPointer.nonEmpty) {
+
             if (needsRegeneration(ramlBaseDir, dst)) {
-              // println(s"RAML relative dir is: $ramlPointer")
+
               val ramlSource = new File(ramlBaseDir, ramlPointer)
-              // println(s"RAML absolute dir is: ${ramlSource.toURI.toURL.toString}")
+
               val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer)
+
               val generatedFiles: Map[String, String] =
                 feedbackOnException(
-                  Try(mapAsScalaMap(ScramlGenerator.generate(ramlSource.toURI.toURL.toString, apiPackageName, apiClassName)).toMap),
+                  Try(
+                    mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource.toURI.toURL.toString, apiPackageName, apiClassName)).toMap
+                  ),
                   ramlBaseDir, ramlPointer, ramlSource
                 )
+
               dst.mkdirs()
               val files: Seq[File] =
                 generatedFiles.map { filePathsWithContent =>
@@ -63,10 +89,12 @@ object ScramlSbtPlugin extends AutoPlugin {
             } else {
               lastGeneratedFiles
             }
+
           } else {
             Seq.empty[File]
           }
         }
+
         generate(
           (scramlRamlApi in scraml).value,
           sourceManaged.value
@@ -82,6 +110,7 @@ object ScramlSbtPlugin extends AutoPlugin {
     )
   }
 
+
   import autoImport._
 
   override def requires = sbt.plugins.JvmPlugin
@@ -95,6 +124,7 @@ object ScramlSbtPlugin extends AutoPlugin {
   // ++ inConfig(Test)(baseScramlSettings)
 
   var lastModifiedTime: Long = 0L
+
 
   private def packageAndClassFromRamlPointer(pointer: String): (String, String) = {
     // e.g. io/atomicbits/scraml/api.raml
@@ -124,6 +154,7 @@ object ScramlSbtPlugin extends AutoPlugin {
       (fragments.dropRight(1).mkString("."), cleanFileName(fragments.takeRight(1).head))
     }
   }
+
 
   private def needsRegeneration(dir: File, destination: File): Boolean = {
 
@@ -158,6 +189,7 @@ object ScramlSbtPlugin extends AutoPlugin {
     }
 
   }
+
 
   private def feedbackOnException(result: Try[Map[String, String]],
                                   ramlBaseDir: File,
