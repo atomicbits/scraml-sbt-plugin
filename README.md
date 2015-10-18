@@ -1,4 +1,7 @@
 # scraml-sbt-plugin
+
+[![Build Status](https://travis-ci.org/atomicbits/scraml-sbt-plugin.svg?branch=develop)](https://travis-ci.org/atomicbits/scraml-sbt-plugin)
+
 An SBT plugin for scraml
 
 To enable scraml generation in your project, follow these steps:
