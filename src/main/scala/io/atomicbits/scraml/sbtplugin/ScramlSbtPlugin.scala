@@ -49,17 +49,19 @@ object ScramlSbtPlugin extends AutoPlugin {
     // override lazy val projectSettings = Seq(commands += helloCommand)
     val scraml = taskKey[Seq[File]]("scraml generator")
     val scramlRamlApi = settingKey[String]("scraml raml file pointer")
+    val scramlBaseDir = settingKey[String]("scraml base directory")
 
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
 
-        def generate(ramlPointer: String, dst: File): Seq[File] = {
-
-          // RAML files are expected to be found in the resource directory
-          val ramlBaseDir = resourceDirectory.value
+        def generate(ramlPointer: String, givenOutputDir: String, dst: File): Seq[File] = {
 
           if (ramlPointer.nonEmpty) {
+
+            // RAML files are expected to be found in the resource directory if there is no other output directory given.
+            val ramlBaseDir = if (givenOutputDir.isEmpty) resourceDirectory.value else new File(givenOutputDir)
+            ramlBaseDir.mkdirs()
 
             if (needsRegeneration(ramlBaseDir, dst)) {
 
@@ -97,10 +99,12 @@ object ScramlSbtPlugin extends AutoPlugin {
 
         generate(
           (scramlRamlApi in scraml).value,
+          (scramlBaseDir in scraml).value,
           sourceManaged.value
         )
       },
       // We can set a default value as below
+      scramlBaseDir in scraml := "",
       scramlRamlApi in scraml := "",
       // but to set the value in a project we then need to do:
       //   scramlRamlApi in scraml in Compile := "foo"
@@ -207,14 +211,14 @@ object ScramlSbtPlugin extends AutoPlugin {
              |
              |- - - - - - - - - - - - - - - - - - - - - - -
              |RAML base path: $ramlBase
-              |RAML relative path: $ramlPointer
-              |RAML absolute path: $ramlSrc
-              |- - - - - - - - - - - - - - - - - - - - - - -
-              |
+             |RAML relative path: $ramlPointer
+             |RAML absolute path: $ramlSrc
+             |- - - - - - - - - - - - - - - - - - - - - - -
+             |
               |In case the relative path is wrong or null, check your project settings and
-              |make sure the 'scramlRamlApi in scraml in Compile' value points to the main
-              |raml file in your project's (or module's) resources directory.
-              |
+             |make sure the 'scramlRamlApi in scraml in Compile' value points to the main
+             |raml file in your project's (or module's) resources directory.
+             |
            """.stripMargin)
         throw ex
       case Failure(ex)                       => throw ex
