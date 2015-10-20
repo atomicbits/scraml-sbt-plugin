@@ -50,31 +50,38 @@ object ScramlSbtPlugin extends AutoPlugin {
     val scraml = taskKey[Seq[File]]("scraml generator")
     val scramlRamlApi = settingKey[String]("scraml raml file pointer")
     val scramlBaseDir = settingKey[String]("scraml base directory")
+    val scramlClasPathResource = settingKey[Boolean]("indicate that raml files are located in a classpath resource (default is false)")
 
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
 
-        def generate(ramlPointer: String, givenOutputDir: String, dst: File): Seq[File] = {
+        def generate(ramlPointer: String, givenBaseDir: String, dst: File, classPathResource: Boolean): Seq[File] = {
 
           if (ramlPointer.nonEmpty) {
 
             // RAML files are expected to be found in the resource directory if there is no other output directory given.
-            val ramlBaseDir = if (givenOutputDir.isEmpty) resourceDirectory.value else new File(givenOutputDir)
-            ramlBaseDir.mkdirs()
+            val (ramlBaseDir, ramlSource) =
+              if (classPathResource) {
+                (None, ramlPointer)
+              } else {
+                val base = if (givenBaseDir.isEmpty) resourceDirectory.value else new File(givenBaseDir)
+                base.mkdirs()
+                val src = new File(base, ramlPointer).toURI.toURL.toString
+                (Some(base), src)
+              }
 
             if (needsRegeneration(ramlBaseDir, dst)) {
-
-              val ramlSource = new File(ramlBaseDir, ramlPointer)
 
               val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer)
 
               val generatedFiles: Map[String, String] =
                 feedbackOnException(
                   Try(
-                    mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource.toURI.toURL.toString, apiPackageName, apiClassName)).toMap
+                    mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource, apiPackageName, apiClassName)).toMap
                   ),
-                  ramlBaseDir, ramlPointer, ramlSource
+                  ramlPointer,
+                  ramlSource
                 )
 
               dst.mkdirs()
@@ -100,12 +107,14 @@ object ScramlSbtPlugin extends AutoPlugin {
         generate(
           (scramlRamlApi in scraml).value,
           (scramlBaseDir in scraml).value,
-          sourceManaged.value
+          sourceManaged.value,
+          (scramlClasPathResource in scraml).value
         )
       },
       // We can set a default value as below
       scramlBaseDir in scraml := "",
       scramlRamlApi in scraml := "",
+      scramlClasPathResource in scraml := false,
       // but to set the value in a project we then need to do:
       //   scramlRamlApi in scraml in Compile := "foo"
       // instead of just:
@@ -160,7 +169,7 @@ object ScramlSbtPlugin extends AutoPlugin {
   }
 
 
-  private def needsRegeneration(dir: File, destination: File): Boolean = {
+  private def needsRegeneration(ramlDir: Option[File], destination: File): Boolean = {
 
     def lastChangedTime(filesAndDirectories: List[File]): Option[Long] = {
 
@@ -177,9 +186,11 @@ object ScramlSbtPlugin extends AutoPlugin {
       else None
     }
 
-    val topLevelFiles =
+    val topLevelFiles = ramlDir map { dir =>
       if (dir.exists()) dir.listFiles().toList
       else List()
+    } getOrElse List()
+
 
     val destinationEmpty = !destination.exists() || destination.listFiles().toList.isEmpty
 
@@ -196,21 +207,18 @@ object ScramlSbtPlugin extends AutoPlugin {
 
 
   private def feedbackOnException(result: Try[Map[String, String]],
-                                  ramlBaseDir: File,
                                   ramlPointer: String,
-                                  ramlSource: File): Map[String, String] = {
+                                  ramlSource: String): Map[String, String] = {
     result match {
       case Success(res)                      => res
       case Failure(ex: NullPointerException) =>
-        val ramlBase = if (ramlBaseDir != null) ramlBaseDir.getCanonicalPath else "null"
-        val ramlSrc = if (ramlSource != null) ramlSource.toURI.toURL.toString else "null"
+        val ramlSrc = if (ramlSource != null) ramlSource else "null"
         println(
           s"""
              |Exception during RAMl parsing, possibly caused by a wrong RAML path.
              |Are you sure the following values are correct (non-null)?
              |
              |- - - - - - - - - - - - - - - - - - - - - - -
-             |RAML base path: $ramlBase
              |RAML relative path: $ramlPointer
              |RAML absolute path: $ramlSrc
              |- - - - - - - - - - - - - - - - - - - - - - -
