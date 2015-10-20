@@ -71,7 +71,7 @@ object ScramlSbtPlugin extends AutoPlugin {
                 (Some(base), src)
               }
 
-            if (needsRegeneration(ramlBaseDir, dst)) {
+            if (classPathResource || needsRegeneration(ramlBaseDir, dst)) {
 
               val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer)
 
