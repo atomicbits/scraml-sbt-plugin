@@ -20,3 +20,10 @@ In your buld.sbt file add the location of your raml main entry file relatively t
 Compile your project. The generated code will appear in your 'target/scala-2.xx/src_managed folder and it should be picked up as included source code in your project. 
 
 See the https://github.com/atomicbits/scraml-test-scala project for an example. 
+
+## Copyright and License
+Copyright 2015 Atomic BITS b.v.b.a. Code released under a dual license philosophy, you can choose which license you use: 
+
+   1. AGPLv3 license (default) 
+   2. commercial license (paying) with a free community variant for registered open source projects (needs registration)
+
