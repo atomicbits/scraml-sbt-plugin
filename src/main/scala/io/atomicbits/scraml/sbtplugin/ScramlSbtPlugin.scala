@@ -49,6 +49,7 @@ object ScramlSbtPlugin extends AutoPlugin {
     // override lazy val projectSettings = Seq(commands += helloCommand)
     val scraml = taskKey[Seq[File]]("scraml generator")
     val scramlRamlApi = settingKey[String]("scraml raml file pointer")
+    val scramlApiPackage = settingKey[String]("scraml package name for the api client class and all its resources")
     val scramlBaseDir = settingKey[String]("scraml base directory")
     val scramlClasPathResource = settingKey[Boolean]("indicate that raml files are located in a classpath resource (default is false)")
 
@@ -56,7 +57,7 @@ object ScramlSbtPlugin extends AutoPlugin {
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
 
-        def generate(ramlPointer: String, givenBaseDir: String, dst: File, classPathResource: Boolean): Seq[File] = {
+        def generate(ramlPointer: String, apiPackage: String, givenBaseDir: String, dst: File, classPathResource: Boolean): Seq[File] = {
 
           if (ramlPointer.nonEmpty) {
 
@@ -73,7 +74,7 @@ object ScramlSbtPlugin extends AutoPlugin {
 
             if (classPathResource || needsRegeneration(ramlBaseDir, dst)) {
 
-              val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer)
+              val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer, apiPackage)
 
               val generatedFiles: Map[String, String] =
                 feedbackOnException(
@@ -106,6 +107,7 @@ object ScramlSbtPlugin extends AutoPlugin {
 
         generate(
           (scramlRamlApi in scraml).value,
+          (scramlApiPackage in scraml).value,
           (scramlBaseDir in scraml).value,
           sourceManaged.value,
           (scramlClasPathResource in scraml).value
@@ -114,6 +116,7 @@ object ScramlSbtPlugin extends AutoPlugin {
       // We can set a default value as below
       scramlBaseDir in scraml := "",
       scramlRamlApi in scraml := "",
+      scramlApiPackage in scraml := "",
       scramlClasPathResource in scraml := false,
       // but to set the value in a project we then need to do:
       //   scramlRamlApi in scraml in Compile := "foo"
@@ -139,7 +142,7 @@ object ScramlSbtPlugin extends AutoPlugin {
   var lastModifiedTime: Long = 0L
 
 
-  private def packageAndClassFromRamlPointer(pointer: String): (String, String) = {
+  private def packageAndClassFromRamlPointer(pointer: String, apiPackage: String): (String, String) = {
     // e.g. io/atomicbits/scraml/api.raml
 
     def cleanFileName(fileName: String): String = {
@@ -162,9 +165,11 @@ object ScramlSbtPlugin extends AutoPlugin {
 
     val fragments = pointer.split('/').toList
     if (fragments.length == 1) {
-      ("io.atomicbits", cleanFileName(fragments.head))
+      val packageName = if (apiPackage.nonEmpty) apiPackage else "io.atomicbits"
+      (packageName, cleanFileName(fragments.head))
     } else {
-      (fragments.dropRight(1).mkString("."), cleanFileName(fragments.takeRight(1).head))
+      val packageName = if (apiPackage.nonEmpty) apiPackage else fragments.dropRight(1).mkString(".")
+      (packageName, cleanFileName(fragments.takeRight(1).head))
     }
   }
 
