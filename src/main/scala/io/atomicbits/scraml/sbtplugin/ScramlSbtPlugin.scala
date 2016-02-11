@@ -29,13 +29,13 @@ import scala.collection.JavaConversions.mapAsScalaMap
 
 
 /**
- * Created by peter on 31/07/15. 
- */
+  * Created by peter on 31/07/15.
+  */
 object ScramlSbtPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Setting[_]] = Seq(
     libraryDependencies ++= Seq(
-      "io.atomicbits" %% "scraml-dsl-scala" % "0.4.7" withSources() withJavadoc()
+      "io.atomicbits" %% "scraml-dsl-scala" % "0.4.8" withSources() withJavadoc()
     )
   )
 
@@ -51,13 +51,19 @@ object ScramlSbtPlugin extends AutoPlugin {
     val scramlRamlApi = settingKey[String]("scraml raml file pointer")
     val scramlApiPackage = settingKey[String]("scraml package name for the api client class and all its resources")
     val scramlBaseDir = settingKey[String]("scraml base directory")
+    val scramlLanguage = settingKey[String]("scraml language setting (defaults to scala)")
     val scramlClasPathResource = settingKey[Boolean]("indicate that raml files are located in a classpath resource (default is false)")
 
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
 
-        def generate(ramlPointer: String, apiPackage: String, givenBaseDir: String, dst: File, classPathResource: Boolean): Seq[File] = {
+        def generate(ramlPointer: String,
+                     apiPackage: String,
+                     givenBaseDir: String,
+                     language: String,
+                     dst: File,
+                     classPathResource: Boolean): Seq[File] = {
 
           if (ramlPointer.nonEmpty) {
 
@@ -79,7 +85,10 @@ object ScramlSbtPlugin extends AutoPlugin {
               val generatedFiles: Map[String, String] =
                 feedbackOnException(
                   Try(
-                    mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource, apiPackageName, apiClassName)).toMap
+                    language.toLowerCase match {
+                      case "java" => mapAsScalaMap(ScramlGenerator.generateJavaCode(ramlSource, apiPackageName, apiClassName)).toMap
+                      case _      => mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource, apiPackageName, apiClassName)).toMap
+                    }
                   ),
                   ramlPointer,
                   ramlSource
@@ -87,12 +96,12 @@ object ScramlSbtPlugin extends AutoPlugin {
 
               dst.mkdirs()
               val files: Seq[File] =
-                generatedFiles.map { filePathsWithContent =>
-                  val (filePath, content) = filePathsWithContent
-                  val fileInDst = new File(dst, filePath)
-                  fileInDst.getParentFile.mkdirs()
-                  IO.write(fileInDst, content)
-                  fileInDst
+                generatedFiles.map {
+                  case (filePath, content) =>
+                    val fileInDst = new File(dst, filePath)
+                    fileInDst.getParentFile.mkdirs()
+                    IO.write(fileInDst, content)
+                    fileInDst
                 }.toSeq
               lastGeneratedFiles = files
               files
@@ -109,12 +118,14 @@ object ScramlSbtPlugin extends AutoPlugin {
           (scramlRamlApi in scraml).value,
           (scramlApiPackage in scraml).value,
           (scramlBaseDir in scraml).value,
+          (scramlLanguage in scraml).value,
           sourceManaged.value,
           (scramlClasPathResource in scraml).value
         )
       },
       // We can set a default value as below
       scramlBaseDir in scraml := "",
+      scramlLanguage in scraml := "scala",
       scramlRamlApi in scraml := "",
       scramlApiPackage in scraml := "",
       scramlClasPathResource in scraml := false,
