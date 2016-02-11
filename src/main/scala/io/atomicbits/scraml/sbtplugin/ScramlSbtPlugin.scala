@@ -35,7 +35,7 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Setting[_]] = Seq(
     libraryDependencies ++= Seq(
-      "io.atomicbits" %% "scraml-dsl-scala" % "0.4.8" withSources() withJavadoc()
+      "io.atomicbits" %% "scraml-dsl-scala" % "0.4.9-SNAPSHOT" withSources() withJavadoc()
     )
   )
 
