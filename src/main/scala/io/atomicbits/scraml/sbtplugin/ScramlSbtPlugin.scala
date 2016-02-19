@@ -133,7 +133,13 @@ object ScramlSbtPlugin extends AutoPlugin {
       //   scramlRamlApi in scraml in Compile := "foo"
       // instead of just:
       //   scramlRamlApi in scraml := "foo"
-      sourceGenerators in Compile += (scraml in Compile).taskValue
+      sourceGenerators in Compile += (scraml in Compile).taskValue,
+      // Make sure the generated sources appear in the packaged sources jar as well.
+      mappings in (Compile,packageSrc) := {
+        val base  = (sourceManaged  in Compile).value
+        val files = (managedSources in Compile).value
+        files.map { f => (f, f.relativeTo(base).get.getPath) }
+      }
     )
   }
 
