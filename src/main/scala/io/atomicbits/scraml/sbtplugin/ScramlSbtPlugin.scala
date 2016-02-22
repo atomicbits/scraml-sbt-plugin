@@ -33,16 +33,27 @@ import scala.collection.JavaConversions.mapAsScalaMap
   */
 object ScramlSbtPlugin extends AutoPlugin {
 
-  override def buildSettings: Seq[Setting[_]] = Seq(
-    libraryDependencies ++= Seq(
-      "io.atomicbits" %% "scraml-dsl-scala" % "0.4.8" withSources() withJavadoc()
-    )
-  )
+  override def buildSettings: Seq[Setting[_]] = autoImport.generateExtraBuildSettings
 
   var lastGeneratedFiles: Seq[File] = Seq()
 
   // by defining autoImport, the settings are automatically imported into user's `*.sbt`
   object autoImport {
+
+    var language: String = "scala"
+
+    def generateExtraBuildSettings: Seq[Setting[_]] = {
+
+      val version = "0.4.9"
+
+      language match {
+        case "java" =>
+          Seq(libraryDependencies ++= Seq("io.atomicbits" % "scraml-dsl-java" % version withSources() withJavadoc()))
+        case _      =>
+          Seq(libraryDependencies ++= Seq("io.atomicbits" %% "scraml-dsl-scala" % version withSources() withJavadoc()))
+      }
+    }
+
 
     // configuration points, like the built-in `version`, `libraryDependencies`, or `compile`
 
@@ -57,6 +68,8 @@ object ScramlSbtPlugin extends AutoPlugin {
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
+
+        language = (scramlLanguage in scraml).value.toLowerCase
 
         def generate(ramlPointer: String,
                      apiPackage: String,
@@ -133,7 +146,13 @@ object ScramlSbtPlugin extends AutoPlugin {
       //   scramlRamlApi in scraml in Compile := "foo"
       // instead of just:
       //   scramlRamlApi in scraml := "foo"
-      sourceGenerators in Compile += (scraml in Compile).taskValue
+      sourceGenerators in Compile += (scraml in Compile).taskValue,
+      // Make sure the generated sources appear in the packaged sources jar as well.
+      mappings in(Compile, packageSrc) := {
+        val base = (sourceManaged in Compile).value
+        val files = (managedSources in Compile).value
+        files.map { f => (f, f.relativeTo(base).get.getPath) }
+      }
     )
   }
 
