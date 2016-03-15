@@ -6,7 +6,7 @@ organization := "io.atomicbits"
 // 1. The version of the sbt plugin, just below (version := ...)
 // 2. The library dependency of the sbt plugin (scraml-generator, below in libraryDependencies)
 // 3. In the ScramlSbtPlugin object, the scraml-dsl-scala injected dependency
-version := "0.4.10"
+version := "0.4.11-SNAPSHOT"
 
 scalaVersion := "2.10.4"
 
@@ -18,7 +18,7 @@ scalacOptions := Seq("-deprecation", "-encoding", "utf8")
  resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 libraryDependencies ++= Seq(
-  "io.atomicbits" %% "scraml-generator" % "0.4.10" withSources() withJavadoc()
+  "io.atomicbits" %% "scraml-generator" % "0.4.11-SNAPSHOT" withSources() withJavadoc()
 )
 
 
