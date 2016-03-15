@@ -44,7 +44,7 @@ object ScramlSbtPlugin extends AutoPlugin {
 
     def generateExtraBuildSettings: Seq[Setting[_]] = {
 
-      val version = "0.4.9"
+      val version = "0.4.10"
 
       language match {
         case "java" =>
