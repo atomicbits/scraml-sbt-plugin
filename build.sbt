@@ -6,7 +6,7 @@ organization := "io.atomicbits"
 // 1. The version of the sbt plugin, just below (version := ...)
 // 2. The library dependency of the sbt plugin (scraml-generator, below in libraryDependencies)
 // 3. In the ScramlSbtPlugin object, the scraml-dsl-scala injected dependency
-version := "0.4.11"
+version := "0.4.11A"
 
 scalaVersion := "2.10.4"
 
