@@ -151,7 +151,12 @@ object ScramlSbtPlugin extends AutoPlugin {
       mappings in(Compile, packageSrc) := {
         val base = (sourceManaged in Compile).value
         val files = (managedSources in Compile).value
-        files.map { f => (f, f.relativeTo(base).get.getPath) }
+        files.map { f =>
+          val path: Option[String] = f.relativeTo(base).map(_.getPath)
+          (f, path)
+        } collect {
+          case (file, Some(path)) => (file, path)
+        }
       }
     )
   }
