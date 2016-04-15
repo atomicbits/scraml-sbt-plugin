@@ -8,8 +8,6 @@ notifications:
   email:
     recipients:
     - peter.rigole@atomicbits.io
-after_success:
-- '[[ $TRAVIS_BRANCH == "develop" ]] && { sbt publish; };'
 env:
   global:
   - secure: KKvDXePSzM4zpjCML7nR22FWqV75LvuVlQZBbEjrtlgty5MkhfeqlVLHRNrWz1GcoKTBzp9B1WWtYRT8lxIie/xxsoZSSYXoMGx+AU+5DFxrkix0U7ipqej7i++Umxmz0nGQEwbMA5cKc+t7oonXHTcJsyAhPVHAI6vN3ghru4baazHl83j/BWUtcz46lWFqq32lI6A3kt3o6d9zFDkU4tHZSgtOnGiTgSEaX3pJ5h0+CKJzpmxTU7gmwRmoNZDo8rBUI+aUQM4UNkZp2NkjJYXdLYtn2ylOZLU0L5ho9wTk9sgbTk8PtOE1MJIS2CS6iADiFnhvL6xpjIwB5cz2meHhvdEBD95bTlvE8k05+vnSqHzmnjb2/gMHV6FAtWjh3ZKtCMiK6KTWBWxXQxKaWjDNNdBcEpp+tuwG/Y/o4lGtFUMyYyn+OTJEjJM603eD66P1ISXt+VpRRWUlBW6UHDYPKnQtoJ75AdvY3QJnM7RHwYTTf2T4ULeG9D3TBm0UMeW2Huex4NS9esN95xBGan5B4cQ9ljRdKLtw7KxJC4a3xqiq5KkiPng0xaCn1xX+A7G3V5VsCohFaRD4ya0jZsvbvSERqQghGWBZZ0T/Q353kYfw3FhGv6OSTd1Ck09XRtFz5cniejwqdpiaqdSxeN7WmgVcepnZNS6F0kmLC2c=

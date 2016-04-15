@@ -35,23 +35,31 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Setting[_]] = autoImport.generateExtraBuildSettings
 
-  var lastGeneratedFiles: Seq[File] = Seq()
+  var lastGeneratedFiles: Map[String, Seq[File]] = Map.empty
+
+  def getLastGeneratedFiles(destination: String): Seq[File] = lastGeneratedFiles.getOrElse(destination, Seq.empty)
+
+  def setLastGeneratedFiles(destination: String, files: Seq[File]): Unit = {
+    lastGeneratedFiles = lastGeneratedFiles + (destination -> files)
+  }
 
   // by defining autoImport, the settings are automatically imported into user's `*.sbt`
   object autoImport {
 
-    var language: String = "scala"
+    //    var language: String = "scala"
 
     def generateExtraBuildSettings: Seq[Setting[_]] = {
 
-      val version = "0.4.12"
+      val version = "0.4.13-SNAPSHOT"
 
-      language match {
-        case "java" =>
-          Seq(libraryDependencies ++= Seq("io.atomicbits" % "scraml-dsl-java" % version withSources() withJavadoc()))
-        case _      =>
-          Seq(libraryDependencies ++= Seq("io.atomicbits" %% "scraml-dsl-scala" % version withSources() withJavadoc()))
-      }
+      scramlVersion := version
+
+      //      language match {
+      //        case "java" =>
+      //          Seq(libraryDependencies ++= Seq("io.atomicbits" % "scraml-dsl-java" % version withSources() withJavadoc()))
+      //        case _      =>
+      //          Seq(libraryDependencies ++= Seq("io.atomicbits" %% "scraml-dsl-scala" % version withSources() withJavadoc()))
+      //      }
     }
 
 
@@ -64,12 +72,12 @@ object ScramlSbtPlugin extends AutoPlugin {
     val scramlBaseDir = settingKey[String]("scraml base directory")
     val scramlLanguage = settingKey[String]("scraml language setting (defaults to scala)")
     val scramlClasPathResource = settingKey[Boolean]("indicate that raml files are located in a classpath resource (default is false)")
+    val scramlVersion = settingKey[String]("scraml version")
 
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
 
-        language = (scramlLanguage in scraml).value.toLowerCase
 
         def generate(ramlPointer: String,
                      apiPackage: String,
@@ -91,8 +99,9 @@ object ScramlSbtPlugin extends AutoPlugin {
                 (Some(base), src)
               }
 
+            println(s"Checking regeneration of $language client from ${ramlBaseDir.map(_.toString)} to ${dst.toString}")
             if (classPathResource || needsRegeneration(ramlBaseDir, dst)) {
-
+              println(s"Regenerating ")
               val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer, apiPackage)
 
               val generatedFiles: Map[String, String] =
@@ -100,7 +109,7 @@ object ScramlSbtPlugin extends AutoPlugin {
                   Try(
                     language.toLowerCase match {
                       case "java" => mapAsScalaMap(ScramlGenerator.generateJavaCode(ramlSource, apiPackageName, apiClassName)).toMap
-                      case _      => mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource, apiPackageName, apiClassName)).toMap
+                      case _ => mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource, apiPackageName, apiClassName)).toMap
                     }
                   ),
                   ramlPointer,
@@ -116,10 +125,12 @@ object ScramlSbtPlugin extends AutoPlugin {
                     IO.write(fileInDst, content)
                     fileInDst
                 }.toSeq
-              lastGeneratedFiles = files
+              setLastGeneratedFiles(dst.toString, files)
               files
             } else {
-              lastGeneratedFiles
+              println(s"No need for regeneration...")
+              println(s"First file: ${getLastGeneratedFiles(dst.toString).headOption.map(_.toString).getOrElse("no first file")}")
+              getLastGeneratedFiles(dst.toString)
             }
 
           } else {
@@ -174,7 +185,15 @@ object ScramlSbtPlugin extends AutoPlugin {
     inConfig(Compile)(baseScramlSettings)
   // ++ inConfig(Test)(baseScramlSettings)
 
-  var lastModifiedTime: Long = 0L
+  var lastModifiedTime: Map[Option[String], Long] = Map.empty
+
+  def getLastModifiedTime(ramlDir: Option[String]): Long = {
+    lastModifiedTime.getOrElse(ramlDir, 0L)
+  }
+
+  def setLastModifiedTime(ramlDir: Option[String], time: Long): Unit = {
+    lastModifiedTime = lastModifiedTime + (ramlDir -> time)
+  }
 
 
   private def packageAndClassFromRamlPointer(pointer: String, apiPackage: String): (String, String) = {
@@ -237,8 +256,8 @@ object ScramlSbtPlugin extends AutoPlugin {
     val changedTime = lastChangedTime(topLevelFiles)
 
     changedTime.exists { changedT =>
-      val changed = changedT > lastModifiedTime
-      if (changed) lastModifiedTime = changedT
+      val changed = changedT > getLastModifiedTime(ramlDir.map(_.toString))
+      if (changed) setLastModifiedTime(ramlDir.map(_.toString), changedT)
       // If we have resource files and the destination dir is empty, we regenerate anyhow to avoid starvation after a clean operation.
       changed || destinationEmpty
     }
@@ -250,7 +269,7 @@ object ScramlSbtPlugin extends AutoPlugin {
                                   ramlPointer: String,
                                   ramlSource: String): Map[String, String] = {
     result match {
-      case Success(res)                      => res
+      case Success(res) => res
       case Failure(ex: NullPointerException) =>
         val ramlSrc = if (ramlSource != null) ramlSource else "null"
         println(
@@ -269,7 +288,7 @@ object ScramlSbtPlugin extends AutoPlugin {
              |
            """.stripMargin)
         throw ex
-      case Failure(ex)                       => throw ex
+      case Failure(ex) => throw ex
     }
   }
 
