@@ -37,7 +37,6 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   val lastModifiedTime = new mutable.HashMap[(Option[String], String), Long] with mutable.SynchronizedMap[(Option[String], String), Long]
 
-
   def getLastModifiedTime(ramlDir: Option[String], destination: String): Long = {
     lastModifiedTime.getOrElse((ramlDir, destination), 0L)
   }
@@ -46,7 +45,7 @@ object ScramlSbtPlugin extends AutoPlugin {
     lastModifiedTime += ((ramlDir, destination) -> time)
   }
 
-  var lastGeneratedFiles = new mutable.HashMap[String, Seq[File]] with mutable.SynchronizedMap[String, Seq[File]]
+  val lastGeneratedFiles = new mutable.HashMap[String, Seq[File]] with mutable.SynchronizedMap[String, Seq[File]]
 
   def getLastGeneratedFiles(destination: String): Seq[File] = lastGeneratedFiles.getOrElse(destination, Seq.empty)
 
