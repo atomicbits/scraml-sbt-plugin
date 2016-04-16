@@ -185,14 +185,14 @@ object ScramlSbtPlugin extends AutoPlugin {
     inConfig(Compile)(baseScramlSettings)
   // ++ inConfig(Test)(baseScramlSettings)
 
-  var lastModifiedTime: Map[Option[String], Long] = Map.empty
+  var lastModifiedTime: Map[(Option[String], String), Long] = Map.empty
 
-  def getLastModifiedTime(ramlDir: Option[String]): Long = {
-    lastModifiedTime.getOrElse(ramlDir, 0L)
+  def getLastModifiedTime(ramlDir: Option[String], destination: String): Long = {
+    lastModifiedTime.getOrElse((ramlDir, destination), 0L)
   }
 
-  def setLastModifiedTime(ramlDir: Option[String], time: Long): Unit = {
-    lastModifiedTime = lastModifiedTime + (ramlDir -> time)
+  def setLastModifiedTime(ramlDir: Option[String], destination: String, time: Long): Unit = {
+    lastModifiedTime = lastModifiedTime + ((ramlDir, destination) -> time)
   }
 
 
@@ -256,8 +256,8 @@ object ScramlSbtPlugin extends AutoPlugin {
     val changedTime = lastChangedTime(topLevelFiles)
 
     changedTime.exists { changedT =>
-      val changed = changedT > getLastModifiedTime(ramlDir.map(_.toString))
-      if (changed) setLastModifiedTime(ramlDir.map(_.toString), changedT)
+      val changed = changedT > getLastModifiedTime(ramlDir.map(_.toString), destination.toString)
+      if (changed) setLastModifiedTime(ramlDir.map(_.toString), destination.toString, changedT)
       // If we have resource files and the destination dir is empty, we regenerate anyhow to avoid starvation after a clean operation.
       changed || destinationEmpty
     }
