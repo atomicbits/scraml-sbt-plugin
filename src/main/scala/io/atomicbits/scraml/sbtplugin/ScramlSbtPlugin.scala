@@ -24,8 +24,8 @@ import sbt._
 import Keys._
 
 import scala.util.{Failure, Success, Try}
-
 import scala.collection.JavaConversions.mapAsScalaMap
+import scala.collection.mutable
 
 
 /**
@@ -35,22 +35,23 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Setting[_]] = autoImport.generateExtraBuildSettings
 
-  var lastModifiedTime: Map[(Option[String], String), Long] = Map.empty
+  val lastModifiedTime = new mutable.HashMap[(Option[String], String), Long] with mutable.SynchronizedMap[(Option[String], String), Long]
+
 
   def getLastModifiedTime(ramlDir: Option[String], destination: String): Long = {
     lastModifiedTime.getOrElse((ramlDir, destination), 0L)
   }
 
   def setLastModifiedTime(ramlDir: Option[String], destination: String, time: Long): Unit = {
-    lastModifiedTime = lastModifiedTime + ((ramlDir, destination) -> time)
+    lastModifiedTime += ((ramlDir, destination) -> time)
   }
 
-  var lastGeneratedFiles: Map[String, Seq[File]] = Map.empty
+  var lastGeneratedFiles = new mutable.HashMap[String, Seq[File]] with mutable.SynchronizedMap[String, Seq[File]]
 
   def getLastGeneratedFiles(destination: String): Seq[File] = lastGeneratedFiles.getOrElse(destination, Seq.empty)
 
   def setLastGeneratedFiles(destination: String, files: Seq[File]): Unit = {
-    lastGeneratedFiles = lastGeneratedFiles + (destination -> files)
+    lastGeneratedFiles += (destination -> files)
   }
 
 
