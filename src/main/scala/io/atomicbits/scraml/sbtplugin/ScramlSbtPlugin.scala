@@ -24,8 +24,8 @@ import sbt._
 import Keys._
 
 import scala.util.{Failure, Success, Try}
-
 import scala.collection.JavaConversions.mapAsScalaMap
+import scala.collection.mutable
 
 
 /**
@@ -35,101 +35,52 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Setting[_]] = autoImport.generateExtraBuildSettings
 
-  var lastGeneratedFiles: Seq[File] = Seq()
+  val lastModifiedTime = new mutable.HashMap[(Option[String], String), Long] with mutable.SynchronizedMap[(Option[String], String), Long]
+
+  def getLastModifiedTime(ramlDir: Option[String], destination: String): Long = {
+    lastModifiedTime.getOrElse((ramlDir, destination), 0L)
+  }
+
+  def setLastModifiedTime(ramlDir: Option[String], destination: String, time: Long): Unit = {
+    lastModifiedTime += ((ramlDir, destination) -> time)
+  }
+
+  val lastGeneratedFiles = new mutable.HashMap[String, Seq[File]] with mutable.SynchronizedMap[String, Seq[File]]
+
+  def getLastGeneratedFiles(destination: String): Seq[File] = lastGeneratedFiles.getOrElse(destination, Seq.empty)
+
+  def setLastGeneratedFiles(destination: String, files: Seq[File]): Unit = {
+    lastGeneratedFiles += (destination -> files)
+  }
+
 
   // by defining autoImport, the settings are automatically imported into user's `*.sbt`
   object autoImport {
 
-    var language: String = "scala"
-
     def generateExtraBuildSettings: Seq[Setting[_]] = {
 
-      val version = "0.4.12"
+      val snapshotSuffix = "-SNAPSHOT"
+      val version = "0.4.13" // + snapshotSuffix
 
-      language match {
-        case "java" =>
-          Seq(libraryDependencies ++= Seq("io.atomicbits" % "scraml-dsl-java" % version withSources() withJavadoc()))
-        case _      =>
-          Seq(libraryDependencies ++= Seq("io.atomicbits" %% "scraml-dsl-scala" % version withSources() withJavadoc()))
-      }
+      scramlVersion := version
+
     }
 
-
-    // configuration points, like the built-in `version`, `libraryDependencies`, or `compile`
-
-    // override lazy val projectSettings = Seq(commands += helloCommand)
     val scraml = taskKey[Seq[File]]("scraml generator")
     val scramlRamlApi = settingKey[String]("scraml raml file pointer")
     val scramlApiPackage = settingKey[String]("scraml package name for the api client class and all its resources")
     val scramlBaseDir = settingKey[String]("scraml base directory")
     val scramlLanguage = settingKey[String]("scraml language setting (defaults to scala)")
     val scramlClasPathResource = settingKey[Boolean]("indicate that raml files are located in a classpath resource (default is false)")
+    val scramlVersion = settingKey[String]("scraml version")
 
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
-
-        language = (scramlLanguage in scraml).value.toLowerCase
-
-        def generate(ramlPointer: String,
-                     apiPackage: String,
-                     givenBaseDir: String,
-                     language: String,
-                     dst: File,
-                     classPathResource: Boolean): Seq[File] = {
-
-          if (ramlPointer.nonEmpty) {
-
-            // RAML files are expected to be found in the resource directory if there is no other output directory given.
-            val (ramlBaseDir, ramlSource) =
-              if (classPathResource) {
-                (None, ramlPointer)
-              } else {
-                val base = if (givenBaseDir.isEmpty) resourceDirectory.value else new File(givenBaseDir)
-                base.mkdirs()
-                val src = new File(base, ramlPointer).toURI.toURL.toString
-                (Some(base), src)
-              }
-
-            if (classPathResource || needsRegeneration(ramlBaseDir, dst)) {
-
-              val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer, apiPackage)
-
-              val generatedFiles: Map[String, String] =
-                feedbackOnException(
-                  Try(
-                    language.toLowerCase match {
-                      case "java" => mapAsScalaMap(ScramlGenerator.generateJavaCode(ramlSource, apiPackageName, apiClassName)).toMap
-                      case _      => mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource, apiPackageName, apiClassName)).toMap
-                    }
-                  ),
-                  ramlPointer,
-                  ramlSource
-                )
-
-              dst.mkdirs()
-              val files: Seq[File] =
-                generatedFiles.map {
-                  case (filePath, content) =>
-                    val fileInDst = new File(dst, filePath)
-                    fileInDst.getParentFile.mkdirs()
-                    IO.write(fileInDst, content)
-                    fileInDst
-                }.toSeq
-              lastGeneratedFiles = files
-              files
-            } else {
-              lastGeneratedFiles
-            }
-
-          } else {
-            Seq.empty[File]
-          }
-        }
-
         generate(
           (scramlRamlApi in scraml).value,
           (scramlApiPackage in scraml).value,
+          resourceDirectory.value,
           (scramlBaseDir in scraml).value,
           (scramlLanguage in scraml).value,
           sourceManaged.value,
@@ -174,11 +125,70 @@ object ScramlSbtPlugin extends AutoPlugin {
     inConfig(Compile)(baseScramlSettings)
   // ++ inConfig(Test)(baseScramlSettings)
 
-  var lastModifiedTime: Long = 0L
+
+  private def generate(ramlPointer: String,
+                       apiPackage: String,
+                       defaultBaseDir: File,
+                       givenBaseDir: String,
+                       language: String,
+                       dst: File,
+                       classPathResource: Boolean): Seq[File] = {
+
+    if (ramlPointer.nonEmpty) {
+
+      // RAML files are expected to be found in the resource directory if there is no other output directory given.
+      val (ramlBaseDir, ramlSource) =
+        if (classPathResource) {
+          (None, ramlPointer)
+        } else {
+          val base = if (givenBaseDir.isEmpty) defaultBaseDir else new File(givenBaseDir)
+          base.mkdirs()
+          val src = new File(base, ramlPointer).toURI.toURL.toString
+          (Some(base), src)
+        }
+
+      if (classPathResource || needsRegeneration(ramlBaseDir, dst)) {
+        println(s"Regenerating $language client from ${ramlBaseDir.map(_.toString).getOrElse("")} to ${dst.toString}")
+
+        val (apiPackageName, apiClassName) = packageAndClassFromRamlPointer(ramlPointer, apiPackage)
+
+        val generatedFiles: Map[String, String] =
+          feedbackOnException(
+            Try(
+              language.toLowerCase match {
+                case "java" => mapAsScalaMap(ScramlGenerator.generateJavaCode(ramlSource, apiPackageName, apiClassName)).toMap
+                case _ => mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource, apiPackageName, apiClassName)).toMap
+              }
+            ),
+            ramlPointer,
+            ramlSource
+          )
+
+        dst.mkdirs()
+        val files: Seq[File] =
+          generatedFiles.map {
+            case (filePath, content) =>
+              val fileInDst = new File(dst, filePath)
+              fileInDst.getParentFile.mkdirs()
+              IO.write(fileInDst, content)
+              fileInDst
+          }.toSeq
+        setLastGeneratedFiles(dst.toString, files)
+        files
+      } else {
+        println(s"No need for regeneration of $language client for ${ramlBaseDir.map(_.toString).getOrElse("")}")
+        getLastGeneratedFiles(dst.toString)
+      }
+
+    } else {
+      Seq.empty[File]
+    }
+  }
 
 
   private def packageAndClassFromRamlPointer(pointer: String, apiPackage: String): (String, String) = {
     // e.g. io/atomicbits/scraml/api.raml
+
 
     def cleanFileName(fileName: String): String = {
       val withOutExtension = fileName.split('.').filter(_.nonEmpty).head
@@ -198,6 +208,7 @@ object ScramlSbtPlugin extends AutoPlugin {
       capitalized.replaceAll("[^A-Za-z0-9]", "")
     }
 
+
     val fragments = pointer.split('/').toList
     if (fragments.length == 1) {
       val packageName = if (apiPackage.nonEmpty) apiPackage else "io.atomicbits"
@@ -206,6 +217,7 @@ object ScramlSbtPlugin extends AutoPlugin {
       val packageName = if (apiPackage.nonEmpty) apiPackage else fragments.dropRight(1).mkString(".")
       (packageName, cleanFileName(fragments.takeRight(1).head))
     }
+
   }
 
 
@@ -237,8 +249,8 @@ object ScramlSbtPlugin extends AutoPlugin {
     val changedTime = lastChangedTime(topLevelFiles)
 
     changedTime.exists { changedT =>
-      val changed = changedT > lastModifiedTime
-      if (changed) lastModifiedTime = changedT
+      val changed = changedT > getLastModifiedTime(ramlDir.map(_.toString), destination.toString)
+      if (changed) setLastModifiedTime(ramlDir.map(_.toString), destination.toString, changedT)
       // If we have resource files and the destination dir is empty, we regenerate anyhow to avoid starvation after a clean operation.
       changed || destinationEmpty
     }
@@ -250,7 +262,7 @@ object ScramlSbtPlugin extends AutoPlugin {
                                   ramlPointer: String,
                                   ramlSource: String): Map[String, String] = {
     result match {
-      case Success(res)                      => res
+      case Success(res) => res
       case Failure(ex: NullPointerException) =>
         val ramlSrc = if (ramlSource != null) ramlSource else "null"
         println(
@@ -269,7 +281,7 @@ object ScramlSbtPlugin extends AutoPlugin {
              |
            """.stripMargin)
         throw ex
-      case Failure(ex)                       => throw ex
+      case Failure(ex) => throw ex
     }
   }
 
