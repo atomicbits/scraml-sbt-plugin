@@ -5,8 +5,7 @@ organization := "io.atomicbits"
 // Increasing the version needs to be done in 2 places:
 // 1. The version of the sbt plugin, just below (version := ...)
 // 2. In the ScramlSbtPlugin object, the scraml-dsl-scala injected dependency
-val snapshotSuffix = "-SNAPSHOT"
-version := "0.4.13" // + snapshotSuffix
+version := "0.4.13" 
 
 scalaVersion := "2.10.4"
 
