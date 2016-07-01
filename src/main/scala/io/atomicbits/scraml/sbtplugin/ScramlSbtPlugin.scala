@@ -59,18 +59,20 @@ object ScramlSbtPlugin extends AutoPlugin {
 
     def generateExtraBuildSettings: Seq[Setting[_]] = {
 
-      val version = "0.4.14" // -SNAPSHOT"
+      val version = "0.4.15-SNAPSHOT"
 
       scramlVersion := version
 
     }
 
     val scraml = taskKey[Seq[File]]("scraml generator")
-    val scramlRamlApi = settingKey[String]("scraml raml file pointer")
+    val scramlRamlApi = settingKey[String]("scraml raml file location")
     val scramlApiPackage = settingKey[String]("scraml package name for the api client class and all its resources")
     val scramlBaseDir = settingKey[String]("scraml base directory")
     val scramlLanguage = settingKey[String]("scraml language setting (defaults to scala)")
     val scramlClasPathResource = settingKey[Boolean]("indicate that raml files are located in a classpath resource (default is false)")
+    val scramlLicenseKey = settingKey[String]("scraml 3rd party license key")
+    val scramlClassHeader = settingKey[String]("scraml 3rd party class header")
     val scramlVersion = settingKey[String]("scraml version")
 
     // default values for the tasks and settings
@@ -83,7 +85,9 @@ object ScramlSbtPlugin extends AutoPlugin {
           (scramlBaseDir in scraml).value,
           (scramlLanguage in scraml).value,
           sourceManaged.value,
-          (scramlClasPathResource in scraml).value
+          (scramlClasPathResource in scraml).value,
+          (scramlLicenseKey in scraml).value,
+          (scramlClassHeader in scraml).value
         )
       },
       // We can set a default value as below
@@ -92,6 +96,8 @@ object ScramlSbtPlugin extends AutoPlugin {
       scramlRamlApi in scraml := "",
       scramlApiPackage in scraml := "",
       scramlClasPathResource in scraml := false,
+      scramlLicenseKey in scraml := "",
+      scramlClassHeader in scraml := "",
       // but to set the value in a project we then need to do:
       //   scramlRamlApi in scraml in Compile := "foo"
       // instead of just:
@@ -131,7 +137,9 @@ object ScramlSbtPlugin extends AutoPlugin {
                        givenBaseDir: String,
                        language: String,
                        dst: File,
-                       classPathResource: Boolean): Seq[File] = {
+                       classPathResource: Boolean,
+                       scramlLicenseKey: String,
+                       scramlClassHeader: String): Seq[File] = {
 
     if (ramlPointer.nonEmpty) {
 
@@ -155,8 +163,26 @@ object ScramlSbtPlugin extends AutoPlugin {
           feedbackOnException(
             Try(
               language.toLowerCase match {
-                case "java" => mapAsScalaMap(ScramlGenerator.generateJavaCode(ramlSource, apiPackageName, apiClassName)).toMap
-                case _ => mapAsScalaMap(ScramlGenerator.generateScalaCode(ramlSource, apiPackageName, apiClassName)).toMap
+                case "java" =>
+                  mapAsScalaMap(
+                    ScramlGenerator.generateJavaCode(
+                      ramlSource,
+                      apiPackageName,
+                      apiClassName,
+                      scramlLicenseKey,
+                      scramlClassHeader
+                    )
+                  ).toMap
+                case _      =>
+                  mapAsScalaMap(
+                    ScramlGenerator.generateScalaCode(
+                      ramlSource,
+                      apiPackageName,
+                      apiClassName,
+                      scramlLicenseKey,
+                      scramlClassHeader
+                    )
+                  ).toMap
               }
             ),
             ramlPointer,
@@ -261,7 +287,7 @@ object ScramlSbtPlugin extends AutoPlugin {
                                   ramlPointer: String,
                                   ramlSource: String): Map[String, String] = {
     result match {
-      case Success(res) => res
+      case Success(res)                      => res
       case Failure(ex: NullPointerException) =>
         val ramlSrc = if (ramlSource != null) ramlSource else "null"
         println(
@@ -280,7 +306,7 @@ object ScramlSbtPlugin extends AutoPlugin {
              |
            """.stripMargin)
         throw ex
-      case Failure(ex) => throw ex
+      case Failure(ex)                       => throw ex
     }
   }
 
