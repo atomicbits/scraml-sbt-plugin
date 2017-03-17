@@ -23,10 +23,9 @@ import io.atomicbits.scraml.generator.ScramlGenerator
 import sbt._
 import Keys._
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 import scala.collection.JavaConversions.mapAsScalaMap
 import scala.collection.mutable
-
 
 /**
   * Created by peter on 31/07/15.
@@ -53,27 +52,26 @@ object ScramlSbtPlugin extends AutoPlugin {
     lastGeneratedFiles += (destination -> files)
   }
 
-
   // by defining autoImport, the settings are automatically imported into user's `*.sbt`
   object autoImport {
 
     def generateExtraBuildSettings: Seq[Setting[_]] = {
 
-      val version = "0.5.2"
+      val version = "0.6.0-SNAPSHOT"
 
       scramlVersion := version
 
     }
 
-    val scraml = taskKey[Seq[File]]("scraml generator")
-    val scramlRamlApi = settingKey[String]("scraml raml file location")
-    val scramlApiPackage = settingKey[String]("scraml package name for the api client class and all its resources")
-    val scramlBaseDir = settingKey[String]("scraml base directory")
-    val scramlLanguage = settingKey[String]("scraml language setting (defaults to scala)")
+    val scraml                 = taskKey[Seq[File]]("scraml generator")
+    val scramlRamlApi          = settingKey[String]("scraml raml file location")
+    val scramlApiPackage       = settingKey[String]("scraml package name for the api client class and all its resources")
+    val scramlBaseDir          = settingKey[String]("scraml base directory")
+    val scramlLanguage         = settingKey[String]("scraml language setting (defaults to scala)")
     val scramlClasPathResource = settingKey[Boolean]("indicate that raml files are located in a classpath resource (default is false)")
-    val scramlLicenseKey = settingKey[String]("scraml 3rd party license key")
-    val scramlClassHeader = settingKey[String]("scraml 3rd party class header")
-    val scramlVersion = settingKey[String]("scraml version")
+    val scramlLicenseKey       = settingKey[String]("scraml 3rd party license key")
+    val scramlClassHeader      = settingKey[String]("scraml 3rd party class header")
+    val scramlVersion          = settingKey[String]("scraml version")
 
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
@@ -104,8 +102,8 @@ object ScramlSbtPlugin extends AutoPlugin {
       //   scramlRamlApi in scraml := "foo"
       sourceGenerators in Compile += (scraml in Compile).taskValue,
       // Make sure the generated sources appear in the packaged sources jar as well.
-      mappings in(Compile, packageSrc) := {
-        val base = (sourceManaged in Compile).value
+      mappings in (Compile, packageSrc) := {
+        val base  = (sourceManaged in Compile).value
         val files = (managedSources in Compile).value
         files.map { f =>
           val path: Option[String] = f.relativeTo(base).map(_.getPath)
@@ -116,7 +114,6 @@ object ScramlSbtPlugin extends AutoPlugin {
       }
     )
   }
-
 
   import autoImport._
 
@@ -129,7 +126,6 @@ object ScramlSbtPlugin extends AutoPlugin {
   override val projectSettings =
     inConfig(Compile)(baseScramlSettings)
   // ++ inConfig(Test)(baseScramlSettings)
-
 
   private def generate(ramlPointer: String,
                        apiPackage: String,
@@ -173,7 +169,7 @@ object ScramlSbtPlugin extends AutoPlugin {
                       scramlClassHeader
                     )
                   ).toMap
-                case _      =>
+                case _ =>
                   mapAsScalaMap(
                     ScramlGenerator.generateScalaCode(
                       ramlSource,
@@ -210,10 +206,8 @@ object ScramlSbtPlugin extends AutoPlugin {
     }
   }
 
-
   private def packageAndClassFromRamlPointer(pointer: String, apiPackage: String): (String, String) = {
     // e.g. io/atomicbits/scraml/api.raml
-
 
     def cleanFileName(fileName: String): String = {
       val withOutExtension = fileName.split('.').filter(_.nonEmpty).head
@@ -233,7 +227,6 @@ object ScramlSbtPlugin extends AutoPlugin {
       capitalized.replaceAll("[^A-Za-z0-9]", "")
     }
 
-
     val fragments = pointer.split('/').toList
     if (fragments.length == 1) {
       val packageName = if (apiPackage.nonEmpty) apiPackage else "io.atomicbits"
@@ -244,7 +237,6 @@ object ScramlSbtPlugin extends AutoPlugin {
     }
 
   }
-
 
   private def needsRegeneration(ramlDir: Option[File], destination: File): Boolean = {
 
@@ -257,7 +249,7 @@ object ScramlSbtPlugin extends AutoPlugin {
         else None
 
       val optLastModifiedTimes = maxFilesModifiedTime :: directories.map(dir => lastChangedTime(dir.listFiles().toList))
-      val lastModifiedTimes = optLastModifiedTimes.flatten
+      val lastModifiedTimes    = optLastModifiedTimes.flatten
 
       if (lastModifiedTimes.nonEmpty) Some(lastModifiedTimes.max)
       else None
@@ -267,7 +259,6 @@ object ScramlSbtPlugin extends AutoPlugin {
       if (dir.exists()) dir.listFiles().toList
       else List()
     } getOrElse List()
-
 
     val destinationEmpty = !destination.exists() || destination.listFiles().toList.isEmpty
 
@@ -282,16 +273,12 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   }
 
-
-  private def feedbackOnException(result: Try[Map[String, String]],
-                                  ramlPointer: String,
-                                  ramlSource: String): Map[String, String] = {
+  private def feedbackOnException(result: Try[Map[String, String]], ramlPointer: String, ramlSource: String): Map[String, String] = {
     result match {
-      case Success(res)                      => res
+      case Success(res) => res
       case Failure(ex: NullPointerException) =>
         val ramlSrc = if (ramlSource != null) ramlSource else "null"
-        println(
-          s"""
+        println(s"""
              |Exception during RAMl parsing, possibly caused by a wrong RAML path.
              |Are you sure the following values are correct (non-null)?
              |
@@ -306,7 +293,7 @@ object ScramlSbtPlugin extends AutoPlugin {
              |
            """.stripMargin)
         throw ex
-      case Failure(ex)                       => throw ex
+      case Failure(ex) => throw ex
     }
   }
 

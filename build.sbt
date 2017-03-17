@@ -5,7 +5,7 @@ organization := "io.atomicbits"
 // Increasing the version needs to be done in 2 places:
 // 1. The version of the sbt plugin, just below (version := ...)
 // 2. In the ScramlSbtPlugin object, the scraml version variable
-version := "0.5.2"
+version := "0.6.0-SNAPSHOT"
 
 scalaVersion := "2.10.4"
 
@@ -14,18 +14,19 @@ sbtPlugin := true
 scalacOptions := Seq("-deprecation", "-encoding", "utf8")
 
 // Sonatype snapshot resolver is needed to fetch rxhttpclient-scala_2.11:0.2.0-SNAPSHOT and scraml-generator SNAPSHOT
- resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 libraryDependencies ++= Seq(
-  "io.atomicbits" %% "scraml-generator" % version.value withSources() withJavadoc()
+  "io.atomicbits" %% "scraml-generator" % version.value withSources () withJavadoc ()
 )
-
 
 // Publish settings
 
 publishMavenStyle := true
 
-pomIncludeRepository := { _ => false}
+pomIncludeRepository := { _ =>
+  false
+}
 
 publishTo := {
   val nexus = "https://oss.sonatype.org/"
@@ -35,7 +36,7 @@ publishTo := {
     Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 
-pomExtra :=  <url>https://github.com/atomicbits/scraml-sbt-plugin</url>
+pomExtra := <url>https://github.com/atomicbits/scraml-sbt-plugin</url>
   <licenses>
     <license>
       <name>AGPL license</name>
@@ -58,11 +59,4 @@ pomExtra :=  <url>https://github.com/atomicbits/scraml-sbt-plugin</url>
 credentials ++= (for {
   username <- Option(System.getenv().get("SONATYPE_USERNAME"))
   password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
-} yield
-  Seq(Credentials(
-    "Sonatype Nexus Repository Manager",
-    "oss.sonatype.org",
-    username,
-    password)
-  )).getOrElse(Seq())
-
+} yield Seq(Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password))).getOrElse(Seq())
