@@ -57,7 +57,7 @@ object ScramlSbtPlugin extends AutoPlugin {
 
     def generateExtraBuildSettings: Seq[Setting[_]] = {
 
-      val version = "0.6.1b"
+      val version = "0.7.0-SNAPSHOT"
 
       scramlVersion := version
 
