@@ -7,7 +7,7 @@ organization := "io.atomicbits"
 // 2. In the ScramlSbtPlugin object, the scraml version variable
 version := "0.7.0-M3-SNAPSHOT"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.6"
 
 sbtPlugin := true
 
