@@ -5,9 +5,9 @@ organization := "io.atomicbits"
 // Increasing the version needs to be done in 2 places:
 // 1. The version of the sbt plugin, just below (version := ...)
 // 2. In the ScramlSbtPlugin object, the scraml version variable
-version := "0.7.0-M2"
+version := "0.7.0-M3"  // -SNAPSHOT
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.6"
 
 sbtPlugin := true
 
