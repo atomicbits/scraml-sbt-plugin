@@ -5,7 +5,7 @@ organization := "io.atomicbits"
 // Increasing the version needs to be done in 2 places:
 // 1. The version of the sbt plugin, just below (version := ...)
 // 2. In the ScramlSbtPlugin object, the scraml version variable
-version := "0.7.0" // Change in 2 places!
+version := "0.7.1" // Change in 2 places!
 
 scalaVersion := "2.10.6"
 
