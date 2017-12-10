@@ -23,9 +23,10 @@ import io.atomicbits.scraml.generator.ScramlGenerator
 import sbt._
 import Keys._
 
-import scala.util.{ Failure, Success, Try }
+import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConversions.mapAsScalaMap
 import scala.collection.mutable
+import scalariform.BuildInfo
 
 /**
   * Created by peter on 31/07/15.
@@ -57,7 +58,7 @@ object ScramlSbtPlugin extends AutoPlugin {
 
     def generateExtraBuildSettings: Seq[Setting[_]] = {
 
-      val version = "0.7.1" // Change in 2 places!
+      val version = BuildInfo.version // "0.7.2" // Change in 2 places!
 
       scramlVersion := version
 
