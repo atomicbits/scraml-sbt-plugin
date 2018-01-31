@@ -73,6 +73,8 @@ object ScramlSbtPlugin extends AutoPlugin {
     val scramlLicenseKey = settingKey[String]("scraml 3rd party license key")
     val scramlClassHeader = settingKey[String]("scraml 3rd party class header")
     val scramlVersion = settingKey[String]("scraml version")
+    val scramlDestinationDir = settingKey[File]("scraml generated source output dir, default is target/scala-<version>/src_managed/")
+    val scramlSingleSourceFile = settingKey[String]("scraml single source file name (when all sources should be mapped on a single source file)")
 
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
@@ -84,10 +86,11 @@ object ScramlSbtPlugin extends AutoPlugin {
           (scramlBaseDir in scraml).value,
           (scramlLanguage in scraml).value,
           (scramlPlatform in scraml).value,
-          sourceManaged.value,
+          (scramlDestinationDir in scraml).value,
           (scramlClasPathResource in scraml).value,
           (scramlLicenseKey in scraml).value,
-          (scramlClassHeader in scraml).value
+          (scramlClassHeader in scraml).value,
+          (scramlSingleSourceFile in scraml).value
         )
       },
       // We can set a default value as below
@@ -99,6 +102,8 @@ object ScramlSbtPlugin extends AutoPlugin {
       scramlClasPathResource in scraml := false,
       scramlLicenseKey in scraml := "",
       scramlClassHeader in scraml := "",
+      scramlDestinationDir in scraml := sourceManaged.value,
+      scramlSingleSourceFile in scraml := "",
       // but to set the value in a project we then need to do:
       //   scramlRamlApi in scraml in Compile := "foo"
       // instead of just:
@@ -139,7 +144,8 @@ object ScramlSbtPlugin extends AutoPlugin {
                        dst: File,
                        classPathResource: Boolean,
                        scramlLicenseKey: String,
-                       scramlClassHeader: String): Seq[File] = {
+                       scramlClassHeader: String,
+                       singleTargetSourceFileName: String): Seq[File] = {
 
     if (ramlPointer.nonEmpty) {
 
@@ -169,7 +175,8 @@ object ScramlSbtPlugin extends AutoPlugin {
                   apiPackageName,
                   apiClassName,
                   scramlLicenseKey,
-                  scramlClassHeader
+                  scramlClassHeader,
+                  singleTargetSourceFileName
                 )
               ).toMap
             ),
@@ -187,12 +194,19 @@ object ScramlSbtPlugin extends AutoPlugin {
               fileInDst
           }.toSeq
         setLastGeneratedFiles(dst.toString, files)
-        files
+        if(canCompile(getPlatform(platform, language))) {
+          files
+        } else {
+          Seq.empty[File]
+        }
       } else {
         println(s"No need for regeneration of $language client for ${ramlBaseDir.map(_.toString).getOrElse("")}")
-        getLastGeneratedFiles(dst.toString)
+        if(canCompile(getPlatform(platform, language))) {
+          getLastGeneratedFiles(dst.toString)
+        } else {
+          Seq.empty[File]
+        }
       }
-
     } else {
       Seq.empty[File]
     }
@@ -212,6 +226,14 @@ object ScramlSbtPlugin extends AutoPlugin {
       case "scala" => "ScalaPlay"
       case "java"  => "JavaJackson"
       case other   => other
+    }
+  }
+
+  private def canCompile(platform: String): Boolean = {
+    platform.toLowerCase match {
+      case "scalaplay" => true
+      case "javajackson" => true
+      case _ => false
     }
   }
 
