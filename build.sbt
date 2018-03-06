@@ -1,3 +1,5 @@
+import CrossBuilding._
+
 name := "scraml-sbt-plugin"
 
 organization := "io.atomicbits"
@@ -5,9 +7,15 @@ organization := "io.atomicbits"
 // Increasing the version needs to be done in 2 places:
 // 1. The version of the sbt plugin, just below (version := ...)
 // 2. In the ScramlSbtPlugin object, the scraml version variable
-version := "0.7.2" // Change in 2 places!
+version := "0.8.0" // Change in 2 places!
 
 scalaVersion := "2.10.6"
+
+// cross compile using
+// ^ compile
+// ^ publishLocal
+// ^ publishSigned
+crossSbtVersions := Vector("0.13.16", "1.1.1")
 
 sbtPlugin := true
 

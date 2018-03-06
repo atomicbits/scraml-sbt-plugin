@@ -58,21 +58,25 @@ object ScramlSbtPlugin extends AutoPlugin {
 
     def generateExtraBuildSettings: Seq[Setting[_]] = {
 
-      val version = BuildInfo.version // "0.7.2" // Change in 2 places!
+      val version = BuildInfo.version
+//      val version = "0.8.0-M3" // Change in 2 places!
 
       scramlVersion := version
 
     }
 
-    val scraml                 = taskKey[Seq[File]]("scraml generator")
-    val scramlRamlApi          = settingKey[String]("scraml raml file location")
-    val scramlApiPackage       = settingKey[String]("scraml package name for the api client class and all its resources")
-    val scramlBaseDir          = settingKey[String]("scraml base directory")
-    val scramlLanguage         = settingKey[String]("scraml language setting (defaults to scala)")
+    val scraml = taskKey[Seq[File]]("scraml generator")
+    val scramlRamlApi = settingKey[String]("scraml raml file location")
+    val scramlApiPackage = settingKey[String]("scraml package name for the api client class and all its resources")
+    val scramlBaseDir = settingKey[String]("scraml base directory")
+    val scramlLanguage = settingKey[String]("scraml language setting, deprecated: use platform instead")
+    val scramlPlatform = settingKey[String]("scraml platform setting (defaults to ScalaPlay)")
     val scramlClasPathResource = settingKey[Boolean]("indicate that raml files are located in a classpath resource (default is false)")
-    val scramlLicenseKey       = settingKey[String]("scraml 3rd party license key")
-    val scramlClassHeader      = settingKey[String]("scraml 3rd party class header")
-    val scramlVersion          = settingKey[String]("scraml version")
+    val scramlLicenseKey = settingKey[String]("scraml 3rd party license key")
+    val scramlClassHeader = settingKey[String]("scraml 3rd party class header")
+    val scramlVersion = settingKey[String]("scraml version")
+    val scramlDestinationDir = settingKey[File]("scraml generated source output dir, default is target/scala-<version>/src_managed/")
+    val scramlSingleSourceFile = settingKey[String]("scraml single source file name (when all sources should be mapped on a single source file)")
 
     // default values for the tasks and settings
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
@@ -83,28 +87,33 @@ object ScramlSbtPlugin extends AutoPlugin {
           resourceDirectory.value,
           (scramlBaseDir in scraml).value,
           (scramlLanguage in scraml).value,
-          sourceManaged.value,
+          (scramlPlatform in scraml).value,
+          (scramlDestinationDir in scraml).value,
           (scramlClasPathResource in scraml).value,
           (scramlLicenseKey in scraml).value,
-          (scramlClassHeader in scraml).value
+          (scramlClassHeader in scraml).value,
+          (scramlSingleSourceFile in scraml).value
         )
       },
       // We can set a default value as below
       scramlBaseDir in scraml := "",
-      scramlLanguage in scraml := "scala",
+      scramlLanguage in scraml := "",
+      scramlPlatform in scraml := "ScalaPlay",
       scramlRamlApi in scraml := "",
       scramlApiPackage in scraml := "",
       scramlClasPathResource in scraml := false,
       scramlLicenseKey in scraml := "",
       scramlClassHeader in scraml := "",
+      scramlDestinationDir in scraml := sourceManaged.value,
+      scramlSingleSourceFile in scraml := "",
       // but to set the value in a project we then need to do:
       //   scramlRamlApi in scraml in Compile := "foo"
       // instead of just:
       //   scramlRamlApi in scraml := "foo"
       sourceGenerators in Compile += (scraml in Compile).taskValue,
       // Make sure the generated sources appear in the packaged sources jar as well.
-      mappings in (Compile, packageSrc) := {
-        val base  = (sourceManaged in Compile).value
+      mappings in(Compile, packageSrc) := {
+        val base = (sourceManaged in Compile).value
         val files = (managedSources in Compile).value
         files.map { f =>
           val path: Option[String] = f.relativeTo(base).map(_.getPath)
@@ -133,10 +142,12 @@ object ScramlSbtPlugin extends AutoPlugin {
                        defaultBaseDir: File,
                        givenBaseDir: String,
                        language: String,
+                       platform: String,
                        dst: File,
                        classPathResource: Boolean,
                        scramlLicenseKey: String,
-                       scramlClassHeader: String): Seq[File] = {
+                       scramlClassHeader: String,
+                       singleTargetSourceFileName: String): Seq[File] = {
 
     if (ramlPointer.nonEmpty) {
 
@@ -159,28 +170,17 @@ object ScramlSbtPlugin extends AutoPlugin {
         val generatedFiles: Map[String, String] =
           feedbackOnException(
             Try(
-              language.toLowerCase match {
-                case "java" =>
-                  mapAsScalaMap(
-                    ScramlGenerator.generateJavaCode(
-                      ramlSource,
-                      apiPackageName,
-                      apiClassName,
-                      scramlLicenseKey,
-                      scramlClassHeader
-                    )
-                  ).toMap
-                case _ =>
-                  mapAsScalaMap(
-                    ScramlGenerator.generateScalaCode(
-                      ramlSource,
-                      apiPackageName,
-                      apiClassName,
-                      scramlLicenseKey,
-                      scramlClassHeader
-                    )
-                  ).toMap
-              }
+              mapAsScalaMap(
+                ScramlGenerator.generateScramlCode(
+                  getPlatform(platform, language),
+                  ramlSource,
+                  apiPackageName,
+                  apiClassName,
+                  scramlLicenseKey,
+                  scramlClassHeader,
+                  singleTargetSourceFileName
+                )
+              ).toMap
             ),
             ramlPointer,
             ramlSource
@@ -196,14 +196,46 @@ object ScramlSbtPlugin extends AutoPlugin {
               fileInDst
           }.toSeq
         setLastGeneratedFiles(dst.toString, files)
-        files
+        if(canCompile(getPlatform(platform, language))) {
+          files
+        } else {
+          Seq.empty[File]
+        }
       } else {
         println(s"No need for regeneration of $language client for ${ramlBaseDir.map(_.toString).getOrElse("")}")
-        getLastGeneratedFiles(dst.toString)
+        if(canCompile(getPlatform(platform, language))) {
+          getLastGeneratedFiles(dst.toString)
+        } else {
+          Seq.empty[File]
+        }
       }
-
     } else {
       Seq.empty[File]
+    }
+  }
+
+  /**
+    * 'language' is deprecated, we should use 'platform' now
+    *
+    * 'language' defaults to ""
+    * 'platform' defaults to "ScalaPlay"
+    */
+  private def getPlatform(platform: String, language: String): String = {
+    val givenPlatform =
+      if (language != "") language
+      else platform
+    givenPlatform match {
+      case "scala" => "ScalaPlay"
+      case "java"  => "JavaJackson"
+      case other   => other
+    }
+  }
+
+  private def canCompile(platform: String): Boolean = {
+    platform.toLowerCase match {
+      case "scalaplay" => true
+      case "javajackson" => true
+      case _ => false
     }
   }
 
@@ -250,7 +282,7 @@ object ScramlSbtPlugin extends AutoPlugin {
         else None
 
       val optLastModifiedTimes = maxFilesModifiedTime :: directories.map(dir => lastChangedTime(dir.listFiles().toList))
-      val lastModifiedTimes    = optLastModifiedTimes.flatten
+      val lastModifiedTimes = optLastModifiedTimes.flatten
 
       if (lastModifiedTimes.nonEmpty) Some(lastModifiedTimes.max)
       else None
@@ -276,10 +308,11 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   private def feedbackOnException(result: Try[Map[String, String]], ramlPointer: String, ramlSource: String): Map[String, String] = {
     result match {
-      case Success(res) => res
+      case Success(res)                      => res
       case Failure(ex: NullPointerException) =>
         val ramlSrc = if (ramlSource != null) ramlSource else "null"
-        println(s"""
+        println(
+          s"""
              |Exception during RAMl parsing, possibly caused by a wrong RAML path.
              |Are you sure the following values are correct (non-null)?
              |
@@ -294,7 +327,7 @@ object ScramlSbtPlugin extends AutoPlugin {
              |
            """.stripMargin)
         throw ex
-      case Failure(ex) => throw ex
+      case Failure(ex)                       => throw ex
     }
   }
 
