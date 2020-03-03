@@ -2,14 +2,9 @@ name := "scraml-sbt-plugin"
 
 organization := "io.atomicbits"
 
-// Increasing the version needs to be done in 2 places:
-// 1. The version of the sbt plugin, just below (version := ...)
-// 2. In the ScramlSbtPlugin object, the scraml version variable
-version := "0.8.4-SNAPSHOT" // Change in 1 place!
+version := "0.8.4" // Change in 1 place!
 
-// scalaVersion := "2.10.6"
 scalaVersion := "2.12.10"
-//scalaVersion := "2.13.1"
 
 // cross compile using
 // ^ compile
