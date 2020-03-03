@@ -1,21 +1,16 @@
-import CrossBuilding._
-
 name := "scraml-sbt-plugin"
 
 organization := "io.atomicbits"
 
-// Increasing the version needs to be done in 2 places:
-// 1. The version of the sbt plugin, just below (version := ...)
-// 2. In the ScramlSbtPlugin object, the scraml version variable
-version := "0.8.3" // Change in 1 place!
+version := "0.8.4" // Change in 1 place!
 
-scalaVersion := "2.10.6"
+scalaVersion := "2.12.10"
 
 // cross compile using
 // ^ compile
 // ^ publishLocal
 // ^ publishSigned
-crossSbtVersions := Vector("0.13.16", "1.1.1")
+crossSbtVersions := Vector("1.1.1")
 
 sbtPlugin := true
 
@@ -25,7 +20,7 @@ scalacOptions := Seq("-deprecation", "-encoding", "utf8")
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 libraryDependencies ++= Seq(
-  "io.atomicbits" %% "scraml-generator" % version.value withSources () withJavadoc ()
+  "io.atomicbits" %% "scraml-generator" % version.value withSources() withJavadoc()
 )
 
 // Publish settings
