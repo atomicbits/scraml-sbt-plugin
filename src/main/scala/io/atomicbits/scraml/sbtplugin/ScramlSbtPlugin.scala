@@ -20,13 +20,12 @@
 
 package io.atomicbits.scraml.sbtplugin
 
+import java.util.concurrent.ConcurrentHashMap
 import io.atomicbits.scraml.generator.ScramlGenerator
 import sbt._
 import Keys._
-
-import scala.util.{Failure, Success, Try}
-import scala.collection.JavaConversions.mapAsScalaMap
-import scala.collection.mutable
+import scala.util.{ Failure, Success, Try }
+import scala.collection.JavaConverters.mapAsScalaMap
 import scalariform.BuildInfo
 
 /**
@@ -36,22 +35,22 @@ object ScramlSbtPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Setting[_]] = autoImport.generateExtraBuildSettings
 
-  val lastModifiedTime = new mutable.HashMap[(Option[String], String), Long] with mutable.SynchronizedMap[(Option[String], String), Long]
+  val lastModifiedTime = new ConcurrentHashMap[(Option[String], String), Long]()
 
   def getLastModifiedTime(ramlDir: Option[String], destination: String): Long = {
-    lastModifiedTime.getOrElse((ramlDir, destination), 0L)
+    lastModifiedTime.getOrDefault((ramlDir, destination), 0L)
   }
 
   def setLastModifiedTime(ramlDir: Option[String], destination: String, time: Long): Unit = {
-    lastModifiedTime += ((ramlDir, destination) -> time)
+    lastModifiedTime.put((ramlDir, destination), time)
   }
 
-  val lastGeneratedFiles = new mutable.HashMap[String, Seq[File]] with mutable.SynchronizedMap[String, Seq[File]]
+  val lastGeneratedFiles = new ConcurrentHashMap[String, Seq[File]]
 
-  def getLastGeneratedFiles(destination: String): Seq[File] = lastGeneratedFiles.getOrElse(destination, Seq.empty)
+  def getLastGeneratedFiles(destination: String): Seq[File] = lastGeneratedFiles.getOrDefault(destination, Seq.empty)
 
   def setLastGeneratedFiles(destination: String, files: Seq[File]): Unit = {
-    lastGeneratedFiles += (destination -> files)
+    lastGeneratedFiles.put(destination, files)
   }
 
   // by defining autoImport, the settings are automatically imported into user's `*.sbt`
@@ -82,39 +81,40 @@ object ScramlSbtPlugin extends AutoPlugin {
     lazy val baseScramlSettings: Seq[Def.Setting[_]] = Seq(
       scraml := {
         generate(
-          (scramlRamlApi in scraml).value,
-          (scramlApiPackage in scraml).value,
+          (scraml / scramlRamlApi).value,
+          (scraml / scramlApiPackage).value,
           resourceDirectory.value,
-          (scramlBaseDir in scraml).value,
-          (scramlLanguage in scraml).value,
-          (scramlPlatform in scraml).value,
-          (scramlDestinationDir in scraml).value,
-          (scramlClasPathResource in scraml).value,
-          (scramlLicenseKey in scraml).value,
-          (scramlClassHeader in scraml).value,
-          (scramlSingleSourceFile in scraml).value
+          (scraml / scramlBaseDir).value,
+          (scraml / scramlLanguage).value,
+          (scraml / scramlPlatform).value,
+          (scraml / scramlDestinationDir).value,
+          (scraml / scramlClasPathResource).value,
+          (scraml / scramlLicenseKey).value,
+          (scraml / scramlClassHeader).value,
+          (scraml / scramlSingleSourceFile).value
         )
       },
       // We can set a default value as below
-      scramlBaseDir in scraml := "",
-      scramlLanguage in scraml := "",
-      scramlPlatform in scraml := "ScalaPlay",
-      scramlRamlApi in scraml := "",
-      scramlApiPackage in scraml := "",
-      scramlClasPathResource in scraml := false,
-      scramlLicenseKey in scraml := "",
-      scramlClassHeader in scraml := "",
-      scramlDestinationDir in scraml := sourceManaged.value,
-      scramlSingleSourceFile in scraml := "",
+      scraml / scramlBaseDir := "",
+      scraml / scramlLanguage := "",
+      scraml / scramlPlatform := "ScalaPlay",
+      scraml / scramlRamlApi := "",
+      scraml / scramlApiPackage := "",
+      scraml / scramlClasPathResource := false,
+      scraml / scramlLicenseKey := "",
+      scraml / scramlClassHeader := "",
+      scraml / scramlDestinationDir := sourceManaged.value,
+      scraml / scramlSingleSourceFile := "",
       // but to set the value in a project we then need to do:
-      //   scramlRamlApi in scraml in Compile := "foo"
+      //   Compile / scraml / scramlRamlApi := "foo"
       // instead of just:
-      //   scramlRamlApi in scraml := "foo"
-      sourceGenerators in Compile += (scraml in Compile).taskValue,
+      //   scraml / scramlRamlApi := "foo"
+      Compile / sourceGenerators += (Compile / scraml).taskValue,
       // Make sure the generated sources appear in the packaged sources jar as well.
-      mappings in(Compile, packageSrc) := {
-        val base = (sourceManaged in Compile).value
-        val files = (managedSources in Compile).value
+      //mappings in(Compile, packageSrc) := {
+      Compile / packageSrc / mappings := {
+        val base = (Compile / sourceManaged).value
+        val files = (Compile / managedSources).value
         files.map { f =>
           val path: Option[String] = f.relativeTo(base).map(_.getPath)
           (f, path)
@@ -322,7 +322,7 @@ object ScramlSbtPlugin extends AutoPlugin {
              |- - - - - - - - - - - - - - - - - - - - - - -
              |
               |In case the relative path is wrong or null, check your project settings and
-             |make sure the 'scramlRamlApi in scraml in Compile' value points to the main
+             |make sure the 'Compile / scraml / scramlRamlApi' value points to the main
              |raml file in your project's (or module's) resources directory.
              |
            """.stripMargin)

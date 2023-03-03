@@ -2,9 +2,9 @@ name := "scraml-sbt-plugin"
 
 organization := "io.atomicbits"
 
-version := "0.9.0" // Change in 1 place!
+version := "0.9.1" // Change in 1 place!
 
-scalaVersion := "2.12.10"
+scalaVersion := "2.12.17"
 
 // cross compile using
 // ^ compile
